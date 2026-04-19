@@ -38,7 +38,7 @@ Three phases planned: RAG Agent → Dialogue Agent → Operation Agent
 
 ---
 
-### ⬜ Step 5 — VectorStoreService
+### ✅ Step 5 — VectorStoreService
 **File:** `app/services/vector_store.py`
 
 Wrap test_milvus.py into a reusable class:
@@ -52,7 +52,7 @@ Wrap test_milvus.py into a reusable class:
 
 ---
 
-### ⬜ Step 6 — LangChain Retrieval Tool
+### ✅ Step 6 — LangChain Retrieval Tool
 **File:** `app/tools/retrieval.py`
 
 Wrap `VectorStoreService.search()` as a LangChain `@tool` so the agent can call it:
@@ -128,9 +128,9 @@ agent = graph.compile(checkpointer=MemorySaver())
 
 | File | Status | Step |
 |------|--------|------|
-| `app/services/vector_store.py` | ⬜ TODO | 5 |
-| `app/tools/retrieval.py` | ⬜ TODO | 6 |
-| `app/tools/__init__.py` | ⬜ TODO | 6 |
+| `app/services/vector_store.py` | ✅ Done | 5 |
+| `app/tools/retrieval.py` | ✅ Done | 6 |
+| `app/tools/__init__.py` | ✅ Done | 6 |
 | `app/agent/rag_agent.py` | ⬜ TODO | 7–8 |
 | `app/agent/__init__.py` | ⬜ TODO | 7 |
 | `app/api/chat.py` | ⬜ TODO | 9 |
