@@ -1,3 +1,5 @@
+import sys
+from loguru import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -22,3 +24,6 @@ class Settings(BaseSettings):
                 
                                                                                                 
 settings = Settings()
+
+logger.remove()
+logger.add(sys.stderr, level="DEBUG" if settings.debug else "INFO")

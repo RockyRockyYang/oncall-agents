@@ -20,7 +20,7 @@ An AI-powered on-call assistant that answers operational questions by retrieving
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - Docker & Docker Compose
 - API keys: `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`
 
@@ -39,15 +39,13 @@ pip install -e .
 cp .env.example .env   # edit ANTHROPIC_API_KEY and VOYAGE_API_KEY
 ```
 
-## Ingest runbooks
-
-Add markdown runbooks to `docs/`, then run:
+## Testing
 
 ```bash
-python test_milvus.py
+pytest tests/ -v
 ```
 
-This creates (or recreates) the `oncall_kb` collection and inserts embedded chunks.
+Tests are integration tests that require Milvus running and valid API keys in `.env`.
 
 ## Run the API
 
@@ -83,6 +81,7 @@ app/
   config.py   # Settings
   main.py     # FastAPI app entrypoint
 docs/         # Runbook markdown files
+tests/        # pytest integration tests
 docker-compose.yml
 pyproject.toml
 ```

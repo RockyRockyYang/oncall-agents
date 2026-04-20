@@ -1,10 +1,14 @@
 import pytest
 from app.services.vector_store import VectorStoreService
 
+TEST_COLLECTION = "oncall_kb_test"
+
 
 @pytest.fixture(scope="module")
 def svc():
-    return VectorStoreService()
+    svc = VectorStoreService(collection=TEST_COLLECTION)
+    yield svc
+    svc.drop_collection()
 
 
 @pytest.fixture(scope="module")
