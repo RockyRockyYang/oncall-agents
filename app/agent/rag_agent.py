@@ -28,17 +28,17 @@ Example flow for "how do I find a runaway process?":
 """
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, trim_messages
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode
 from app.config import settings
-from app.tools import search_knowledge_base
+from app.tools import search_knowledge_base, get_current_time
 from langgraph.checkpoint.memory import MemorySaver
 
 SYSTEM_PROMPT = """You are an on-call assistant. When asked about incidents or system issues,
   always search the knowledge base first before answering."""
 
-tools = [search_knowledge_base]
+tools = [search_knowledge_base, get_current_time]
 llm = ChatAnthropic(
     model=settings.rag_model,
     api_key=settings.anthropic_api_key,
@@ -46,8 +46,15 @@ llm = ChatAnthropic(
 
 
 def llm_node(state: MessagesState) -> MessagesState:
-    messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-    response = llm.invoke(messages)
+    system = SystemMessage(content=SYSTEM_PROMPT)
+    trimmed = trim_messages(
+        state["messages"],
+        max_tokens=100,
+        token_counter=len,
+        strategy="last",
+        include_system=True,
+    )
+    response = llm.invoke([system] + trimmed)
     return {"messages": [response]}
 
 

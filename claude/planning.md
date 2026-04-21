@@ -159,7 +159,7 @@ Before starting, add to `pyproject.toml`:
 
 ---
 
-### ⬜ Step 12 — Dialogue Improvements
+### ✅ Step 12 — Dialogue Improvements
 **Files:** `app/tools/time_tool.py`, `app/agent/rag_agent.py`, `app/api/chat.py`
 
 Three small improvements bundled together:
@@ -190,7 +190,7 @@ Reading history requires reading directly from the `MemorySaver` checkpointer.
 
 ---
 
-### ⬜ Step 13 — MCP Server (Monitor)
+### ✅ Step 13 — MCP Server (Monitor)
 **File:** `mcp_servers/monitor_server.py`
 
 Build a standalone MCP server exposing system metrics as tools. Runs as a separate process on port 8004.
@@ -286,10 +286,10 @@ The agent now has access to runbook search + live system metrics from MCP.
 
 | File | Status | Step |
 |------|--------|------|
-| `app/tools/time_tool.py` | ⬜ TODO | 12 |
-| `app/agent/rag_agent.py` | ⬜ TODO (update) | 12, 16 |
-| `app/api/chat.py` | ⬜ TODO (update) | 12 |
-| `mcp_servers/monitor_server.py` | ⬜ TODO | 13 |
+| `app/tools/time_tool.py` | ✅ Done | 12 |
+| `app/agent/rag_agent.py` | ✅ Done (update) | 12, 16 |
+| `app/api/chat.py` | ✅ Done (update) | 12 |
+| `mcp_servers/monitor_server.py` | ✅ Done | 13 |
 | `app/agent/mcp_client.py` | ⬜ TODO | 14 |
 | `app/config.py` | ⬜ TODO (update) | 14 |
 | `app/main.py` | ⬜ TODO (update) | 15 |

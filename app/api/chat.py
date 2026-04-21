@@ -2,8 +2,9 @@ from typing import AsyncGenerator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.memory import MemorySaver
 from app.agent import agent
 
 router = APIRouter()
@@ -42,6 +43,28 @@ async def chat(request: ChatRequest) -> StreamingResponse:
         event_stream(request.message, request.session_id),
         media_type="text/event-stream",
     )
+
+
+@router.post("/chat/session/{session_id}")
+def get_session(session_id: str):
+    config = RunnableConfig(configurable={"thread_id": session_id})
+    state = agent.get_state(config=config)
+    message = [
+        {
+            "role": "user" if isinstance(m, HumanMessage) else "assistant",
+            "content": m.content,
+        }
+        for m in state.values.get("messages", [])
+        if isinstance(m, (HumanMessage, AIMessage))
+    ]
+    return {"session_id": session_id, "messages": message}
+
+
+@router.delete("/chat/session/{session_id}")
+def delete_session(session_id: str) -> dict:
+    config = RunnableConfig(configurable={"thread_id": session_id})
+    agent.update_state(config=config, values={"messages": []})
+    return {"session_id": session_id, "cleared": True}
 
 
 # testing:
