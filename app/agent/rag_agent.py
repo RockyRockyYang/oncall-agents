@@ -28,7 +28,7 @@ Example flow for "how do I find a runaway process?":
 """
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import SystemMessage, trim_messages
+from langchain_core.messages import SystemMessage, trim_messages, AIMessage
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode
 from app.config import settings
@@ -40,12 +40,28 @@ SYSTEM_PROMPT = """You are an on-call assistant. When asked about incidents or s
 
 tools = [search_knowledge_base, get_current_time]
 llm = ChatAnthropic(
-    model=settings.rag_model,
-    api_key=settings.anthropic_api_key,
+    model_name=settings.rag_model,
+    timeout=30,
+    stop=None,
 ).bind_tools(tools)
 
 
 def llm_node(state: MessagesState) -> MessagesState:
+    """
+    LLM node that processes the conversation and generates Claude's response.
+
+    This node:
+    1. Prepends the system prompt to guide Claude's behavior
+    2. Trims the message history to avoid token limits (max 100 tokens)
+    3. Calls Claude with the full context
+    4. Returns Claude's response (which may contain tool_calls or a final answer)
+
+    Args:
+        state: MessagesState containing the conversation history
+
+    Returns:
+        MessagesState with the new LLM response appended to messages
+    """
     system = SystemMessage(content=SYSTEM_PROMPT)
     trimmed = trim_messages(
         state["messages"],
@@ -59,8 +75,21 @@ def llm_node(state: MessagesState) -> MessagesState:
 
 
 def should_continue(state: MessagesState) -> str:
+    """
+    Router function that determines if the conversation should continue to tool execution or end.
+
+    state["messages"][-1] is the most recent message from the LLM (Claude). This message may contain:
+        - tool_calls: A list of tool invocations if Claude decided to search the knowledge base.
+                      Example: [ToolCall(id='...', name='search_knowledge_base', args={...})]
+        - Empty tool_calls list/None: If Claude generated a final answer without needing external data.
+
+    Returns:
+        - "tools" if the last message has tool_calls (route to tools_node for execution)
+        - END if no tool_calls (conversation complete, send answer to user)
+    """
     last = state["messages"][-1]
-    if last.tool_calls:
+    # Only AIMessage has tool_calls attribute; other message types (HumanMessage, etc.) don't
+    if isinstance(last, AIMessage) and last.tool_calls:
         return "tools"
     return END
 
