@@ -7,8 +7,9 @@ import app.api.ingest as ingest_module
 
 
 @pytest.fixture(scope="session")
-def client() -> TestClient:
-    return TestClient(app)
+def client() -> Generator[TestClient, None, None]:
+    with TestClient(app) as c:
+        yield c
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -13,7 +13,7 @@ def test_chat_streams_response(client: TestClient) -> None:
         assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
         chunks = list(response.iter_lines())
         assert any("data:" in line for line in chunks)
-        assert "data: [DONE]" in chunks
+        assert any('"type": "done"' in line for line in chunks)
 
 
 @pytest.mark.integration
@@ -31,6 +31,21 @@ def test_chat_session_memory(client: TestClient) -> None:
         chunks = " ".join(r2.iter_lines())
 
     assert "data:" in chunks  # second turn still responds coherently
+
+
+@pytest.mark.integration
+def test_chat_handles_unknown_topic(client: TestClient) -> None:
+    with client.stream(
+        "POST",
+        "/chat",
+        json={
+            "message": "how do I bake sourdough bread?",
+            "session_id": "test-unknown",
+        },
+    ) as response:
+        assert response.status_code == 200
+        chunks = list(response.iter_lines())
+        assert any("data:" in line for line in chunks)
 
 
 # to run the test

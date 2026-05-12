@@ -215,7 +215,7 @@ Test independently with curl before wiring into the agent.
 
 ---
 
-### ⬜ Step 14 — MCP Client
+### ✅ Step 14 — MCP Client
 **File:** `app/agent/mcp_client.py`
 
 Singleton client that connects to MCP servers using `langchain-mcp-adapters`.
@@ -233,7 +233,7 @@ Add `mcp_monitor_url` to `app/config.py`.
 
 ---
 
-### ⬜ Step 15 — FastAPI Lifespan
+### ✅ Step 15 — FastAPI Lifespan
 **File:** `app/main.py` (update)
 
 When MCP tools are added, agent initialization must become async (MCP requires an active event loop to connect). This means the agent can no longer be compiled at module load time.
@@ -256,7 +256,7 @@ This is the standard production pattern for any async initialization (DB connect
 
 ---
 
-### ⬜ Step 16 — Wire MCP Tools into Agent
+### ✅ Step 16 — Wire MCP Tools into Agent
 **File:** `app/agent/rag_agent.py` (update)
 
 Refactor agent from module-level compilation to a class with async `initialize()`:
@@ -275,7 +275,7 @@ The agent now has access to runbook search + live system metrics from MCP.
 
 ---
 
-### ⬜ Step 17 — Tests + End-to-End
+### ✅ Step 17 — Tests + End-to-End
 - `tests/test_mcp_server.py` — call MCP tools directly, verify responses
 - `tests/test_dialogue.py` — multi-turn conversation, verify context is preserved across turns
 - End-to-end: ask "what is the current CPU usage?" → agent calls MCP tool → answers with real data
@@ -290,11 +290,11 @@ The agent now has access to runbook search + live system metrics from MCP.
 | `app/agent/rag_agent.py` | ✅ Done (update) | 12, 16 |
 | `app/api/chat.py` | ✅ Done (update) | 12 |
 | `mcp_servers/monitor_server.py` | ✅ Done | 13 |
-| `app/agent/mcp_client.py` | ⬜ TODO | 14 |
-| `app/config.py` | ⬜ TODO (update) | 14 |
-| `app/main.py` | ⬜ TODO (update) | 15 |
-| `tests/test_mcp_server.py` | ⬜ TODO | 17 |
-| `tests/test_dialogue.py` | ⬜ TODO | 17 |
+| `app/agent/mcp_client.py` | ✅ Done | 14 |
+| `app/config.py` | ✅ Done (update) | 14 |
+| `app/main.py` | ✅ Done (update) | 15 |
+| `tests/test_mcp_server.py` | ✅ Done | 17 |
+| `tests/test_dialogue.py` | ✅ Done | 17 |
 
 ---
 

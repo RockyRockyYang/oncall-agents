@@ -28,11 +28,13 @@ def list_top_processes(limit: int = 5) -> str:
     processes = []
     for proc in psutil.process_iter(["pid", "name", "cpu_percent"]):
         try:
-            processes.append(proc.info)
+            info = proc.info
+            if info["cpu_percent"] is not None:
+                processes.append(info)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
-    processes.sort(key=lambda x: x["cpu_percent"], reverse=True)
+    processes.sort(key=lambda x: x["cpu_percent"] or 0, reverse=True)
     top_processes = processes[:limit]
     lines = [
         f"PID {p['pid']:>6}  CPU {p['cpu_percent']:>5.1f}%  {p['name']}"

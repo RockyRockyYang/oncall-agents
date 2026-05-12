@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     chunk_max_size: int = 800
     chunk_overlap: int = 100
 
+    # mcp settings
+    mcp_monitor_url: str = "http://localhost:8004/mcp"
+
 
 settings = Settings()
 
