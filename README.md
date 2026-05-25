@@ -22,22 +22,23 @@ An AI-powered on-call assistant that answers operational questions by retrieving
 
 ## Prerequisites
 
-- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package manager
 - Docker & Docker Compose
 - API keys: `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`
 
 ## Setup
 
 ```bash
-# 1. Start Milvus (and its dependencies etcd + MinIO)
+# 1. Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Start Milvus (and its dependencies etcd + MinIO)
 docker compose up -d
 
-# 2. Create a virtual environment and install dependencies
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+# 3. Install dependencies (creates .venv automatically)
+uv sync
 
-# 3. Copy the env template and fill in your keys
+# 4. Copy the env template and fill in your keys
 cp .env.example .env   # edit ANTHROPIC_API_KEY and VOYAGE_API_KEY
 ```
 
@@ -45,10 +46,10 @@ cp .env.example .env   # edit ANTHROPIC_API_KEY and VOYAGE_API_KEY
 
 ```bash
 # 1. Start the MCP monitor server (separate process)
-python mcp_servers/monitor_server.py
+uv run python mcp_servers/monitor_server.py
 
 # 2. Start the FastAPI server
-uvicorn app.main:app --host 0.0.0.0 --port 9900 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 9900 --reload
 ```
 
 The MCP monitor server must be running before starting the FastAPI server — the agent connects to it during startup.
@@ -57,17 +58,17 @@ The MCP monitor server must be running before starting the FastAPI server — th
 
 All tests are integration tests and require:
 - Milvus running (`docker compose up -d`)
-- MCP monitor server running (`python mcp_servers/monitor_server.py`)
+- MCP monitor server running (`uv run python mcp_servers/monitor_server.py`)
 - Valid API keys in `.env`
 
 ```bash
 # Run all integration tests
-pytest tests/ -v -m integration
+uv run pytest tests/ -v -m integration
 
 # Run a specific test file
-pytest tests/test_chat.py -v -m integration
-pytest tests/test_mcp_server.py -v -m integration
-pytest tests/test_dialogue.py -v -m integration
+uv run pytest tests/test_chat.py -v -m integration
+uv run pytest tests/test_mcp_server.py -v -m integration
+uv run pytest tests/test_dialogue.py -v -m integration
 ```
 
 ### Test files

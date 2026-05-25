@@ -54,9 +54,7 @@ class RetryInterceptor(ToolCallInterceptor):
 
 async def get_mcp_tools() -> list[BaseTool]:
     client = MultiServerMCPClient(
-        connections={
-            "monitor": {"transport": "streamable_http", "url": settings.mcp_monitor_url}
-        },
+        connections=settings.mcp_servers,
         tool_interceptors=[RetryInterceptor()],
     )
     return await client.get_tools()

@@ -298,10 +298,268 @@ The agent now has access to runbook search + live system metrics from MCP.
 
 ---
 
-## Phase 3 — Operation Agent _(future)_
+## Phase 3 — Operation Agent
 
 AIOps Plan-Execute-Replan workflow for structured incident diagnosis.
-- Planner: queries KB + generates step-by-step diagnosis plan
-- Executor: runs each step using tools
-- Replanner: decides continue / replan / respond (max 8 steps)
-- Final output: structured markdown diagnostic report
+
+### Architecture
+
+Unlike the Chat Agent (ReAct, user-driven), the Operation Agent is **agent-driven**: given one alert, it independently generates a multi-step investigation plan, executes each step with real tools, adapts the plan based on results, and produces a structured root-cause report.
+
+```
+START → planner → executor → replanner
+                     ↑             |
+                     |    continue |
+                     +─────────────+
+                              |
+                    replan  → executor
+                    respond → END
+```
+
+### Demo Scenario
+
+**Alert:** `"payment-service: HTTP 5xx error rate exceeded 10% for 15 minutes"`
+
+Initial plan (5-6 steps): check time → check CPU → check memory → search error logs → get error summary → generate report
+
+**Replanner triggers replan** after seeing CPU/memory are nominal but logs show `"connection pool exhausted"` errors:
+- Drops remaining generic steps
+- Adds: get deployment events for payment-service
+
+**Final report** (structured markdown):
+- Root Cause: PostgreSQL connection pool exhausted
+- Evidence: CPU 35% avg / memory 62% avg (infra ruled out); 87% of 5xx = connection_pool_exhausted; deploy at T-5min scaled replicas 3→5 (each opens its own pool)
+- Immediate Actions: reduce DB_POOL_SIZE + rolling restart, or deploy PgBouncer
+
+This scenario shows the value of replanning: once the root cause is clear (DB, not infra), the agent drops irrelevant steps and adds targeted ones — without user intervention.
+
+---
+
+### New MCP Server: Logs Server (port 8003)
+
+Replaces Tencent CLS. Inspired by **Splunk** (raw log search) + **Honeybadger** (error aggregation/tracking).
+
+| Tool | Maps to | Description |
+|------|---------|-------------|
+| `search_logs(service, start_time, end_time, query, limit)` | Splunk | Raw log entries with level, message, trace_id |
+| `get_error_summary(service, window_minutes)` | Honeybadger | Error counts by type + rate; surfaces "connection_pool_exhausted" as dominant error |
+| `get_service_deployments(service, hours)` | CI/CD system | Recent deploy history; shows replica scale-up 5min before alert |
+
+Mock data is deterministic and keyed by `service_name` so tests are reproducible.
+
+---
+
+### Monitor Server Enhancements (port 8004)
+
+Current tools (`get_cpu_usage`, `get_memory_usage`, `list_top_processes`) read the local machine via psutil. For microservice diagnosis, we need **service-aware** tools:
+
+| New Tool | Description |
+|----------|-------------|
+| `query_cpu_metrics(service_name, start_time?, end_time?)` | Time-series CPU % for a named service + avg/max/p95 |
+| `query_memory_metrics(service_name, start_time?, end_time?)` | Time-series memory for a named service |
+| `query_db_connections(service_name)` | Current active DB connections vs max — directly surfaces connection pool exhaustion |
+
+Existing psutil tools remain for real-time local system monitoring.
+
+---
+
+### ✅ Step 18 — Logs MCP Server
+**File:** `mcp_servers/logs_server.py`
+
+FastMCP, port 8003, `streamable-http`. Three tools above with deterministic mock data for `payment-service` (DB connection pool exhaustion scenario).
+
+---
+
+### ✅ Step 19 — Monitor Server Enhancement + Config Update
+**Files:** `mcp_servers/monitor_server.py` (update), `app/config.py` (update), `app/agent/mcp_client.py` (update)
+
+- Add 3 service-aware tools to monitor_server.py
+- Add `mcp_logs_url` to config + `mcp_servers` property
+- Ensure MCP client `MultiServerMCPClient` includes both `monitor` and `logs` servers
+
+---
+
+### ✅ Step 20 — Runbooks
+**Files:** `docs/high_error_rate.md`, `docs/high_memory.md`, `docs/slow_response.md`
+
+Sections: alert trigger conditions → investigation steps (referencing tool names) → common root causes (DB connection pool, downstream failure, deploy regression, OOM GC pauses) → resolution procedures → verification.
+
+Ingested to Milvus so Planner can retrieve it as context when generating the investigation plan.
+
+---
+
+### ⬜ Step 21 — AIOps State + Planner
+**Files:** `app/agent/aiops/state.py`, `app/agent/aiops/planner.py`
+
+`PlanExecuteState`:
+```python
+class PlanExecuteState(TypedDict):
+    input: str
+    plan: List[str]
+    past_steps: Annotated[List[tuple], operator.add]  # append-only
+    response: str
+```
+
+Planner:
+1. Retrieves runbook context via `search_knowledge_base(input)`
+2. Lists all tool descriptions (local + MCP)
+3. Claude with `with_structured_output(Plan)` → `{"steps": [...]}`
+4. Returns `{"plan": steps}`
+
+---
+
+### ⬜ Step 22 — Executor
+**File:** `app/agent/aiops/executor.py`
+
+Takes `plan[0]`, binds all tools to Claude, executes (with ToolNode if tool calls are needed), returns:
+```python
+{"plan": plan[1:], "past_steps": [(task, result_text)]}
+```
+Errors recorded as `(task, "Error: {msg}")` — replanner can detect and adapt.
+
+---
+
+### ⬜ Step 23 — Replanner
+**File:** `app/agent/aiops/replanner.py`
+
+Structured output `Act(action: Literal["continue","replan","respond"], new_steps, rationale)`.
+
+Decision rules:
+- Hard limit: `past_steps >= 8` → force respond
+- No remaining plan → force respond
+- `respond` if evidence is sufficient (>= 3 steps executed with clear signal)
+- `replan` only if `past_steps < 5` and plan is clearly wrong; new steps ≤ remaining steps (no expansion)
+- `continue` otherwise
+
+`_generate_report()` → structured markdown: **Root Cause** / **Evidence** / **Immediate Actions** / **Long-term Recommendations**
+
+---
+
+### ⬜ Step 24 — AIOps Service + API
+**Files:** `app/services/aiops_service.py`, `app/models/aiops.py`, `app/api/aiops.py`, `app/main.py` (update)
+
+`execute(input, session_id)` → async generator of SSE events:
+- `{"type": "plan", "steps": [...]}`  — after planner
+- `{"type": "step_start", "step": "...", "step_num": N}`  — before executor
+- `{"type": "step_done", "result_preview": "...", "remaining": N}`  — after executor
+- `{"type": "replanning", "rationale": "..."}`  — when replan triggered
+- `{"type": "report", "content": "...markdown..."}`  — final
+
+`POST /aiops` — `AIOpsRequest(session_id, message)` → EventSourceResponse
+
+---
+
+### ⬜ Step 25 — End-to-End Test
+
+```bash
+# Start services
+docker-compose up -d
+python mcp_servers/logs_server.py &
+python mcp_servers/monitor_server.py &
+uvicorn app.main:app --port 9900 --reload
+
+# Ingest runbook
+curl -X POST localhost:9900/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"file_path": "docs/high_error_rate.md"}'
+
+# Trigger diagnosis
+curl -X POST localhost:9900/aiops \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "demo-1", "message": "payment-service: HTTP 5xx error rate exceeded 10% for 15 minutes"}' \
+  --no-buffer
+```
+
+Expected SSE stream: plan (5-6 steps) → step_done × 3 (time/CPU/memory, all normal) → step_done (error logs: DB connection errors) → `replanning` event → step_done (deployment found) → `report` (root cause + actions)
+
+---
+
+## Phase 3 Files Summary
+
+| File | Status | Step |
+|------|--------|------|
+| `mcp_servers/logs_server.py` | ✅ Done | 18 |
+| `mcp_servers/monitor_server.py` | ✅ Done (update) | 19 |
+| `app/config.py` | ✅ Done (update) | 19 |
+| `app/agent/mcp_client.py` | ✅ Done (update) | 19 |
+| `docs/high_error_rate.md` | ✅ Done | 20 |
+| `docs/high_memory.md` | ✅ Done | 20 |
+| `docs/slow_response.md` | ✅ Done | 20 |
+| `app/agent/aiops/__init__.py` | ⬜ TODO | 21 |
+| `app/agent/aiops/state.py` | ⬜ TODO | 21 |
+| `app/agent/aiops/planner.py` | ⬜ TODO | 21 |
+| `app/agent/aiops/executor.py` | ⬜ TODO | 22 |
+| `app/agent/aiops/replanner.py` | ⬜ TODO | 23 |
+| `app/services/aiops_service.py` | ⬜ TODO | 24 |
+| `app/models/aiops.py` | ⬜ TODO | 24 |
+| `app/api/aiops.py` | ⬜ TODO | 24 |
+| `app/main.py` | ⬜ TODO (update) | 24 |
+
+---
+
+## Phase 4 — Stack Migration (Mainstream)
+
+Migrate storage layer to mainstream tools for resume visibility. Agent logic, MCP servers, and APIs are untouched.
+
+| Component | From | To |
+|-----------|------|----|
+| Embeddings | VoyageAI `voyage-3-lite` (512-dim) | OpenAI `text-embedding-3-small` (1536-dim) |
+| Vector DB | Milvus + etcd + minio (3 containers) | PostgreSQL + pgvector (1 container) |
+
+### ⬜ Step 26 — Dependencies + Infrastructure
+
+`pyproject.toml`: remove `voyageai`, `pymilvus`, `langchain-milvus`; add `langchain-postgres`, `psycopg2-binary`, `langchain-openai`.
+
+`docker-compose.yml`: replace Milvus stack (3 services) with a single `postgres:16` container with `pgvector` extension enabled.
+
+`.env`: add `OPENAI_API_KEY`, `DATABASE_URL=postgresql://...`; remove Milvus + VoyageAI vars.
+
+---
+
+### ⬜ Step 27 — Vector Store Rewrite
+
+**Files:** `app/config.py` (update), `app/core/milvus_client.py` → `app/core/db_client.py`, `app/services/vector_store.py` (rewrite)
+
+Replace `VectorStoreService` internals with LangChain's `PGVector` + `OpenAIEmbeddings`:
+
+```python
+from langchain_postgres import PGVector
+from langchain_openai import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+store = PGVector(embeddings=embeddings, connection=DATABASE_URL, collection_name="runbooks")
+```
+
+Public interface (`ingest`, `search`) stays identical — nothing above this layer changes.
+
+---
+
+### ⬜ Step 28 — Re-ingest + Verify
+
+Dimension change (512→1536) makes old vectors incompatible; drop and recreate the collection.
+
+```bash
+# Start new stack
+docker-compose up -d   # now runs postgres+pgvector only
+
+# Re-ingest all runbooks
+curl -X POST localhost:9900/ingest -d '{"file_path": "docs/high_cpu.md"}'
+curl -X POST localhost:9900/ingest -d '{"file_path": "docs/high_error_rate.md"}'
+
+# Verify retrieval still works
+curl -X POST localhost:9900/chat \
+  -d '{"session_id": "test", "message": "how do I debug high CPU?"}'
+```
+
+---
+
+## Phase 4 Files Summary
+
+| File | Status | Step |
+|------|--------|------|
+| `pyproject.toml` | ⬜ TODO (update) | 26 |
+| `docker-compose.yml` | ⬜ TODO (update) | 26 |
+| `.env` | ⬜ TODO (update) | 26 |
+| `app/config.py` | ⬜ TODO (update) | 27 |
+| `app/core/db_client.py` | ⬜ TODO (replaces milvus_client.py) | 27 |
+| `app/services/vector_store.py` | ⬜ TODO (rewrite) | 27 |

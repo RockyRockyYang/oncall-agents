@@ -25,6 +25,14 @@ class Settings(BaseSettings):
 
     # mcp settings
     mcp_monitor_url: str = "http://localhost:8004/mcp"
+    mcp_logs_url: str = "http://localhost:8003/mcp"
+
+    @property
+    def mcp_servers(self) -> dict:
+        return {
+            "monitor": {"transport": "streamable_http", "url": self.mcp_monitor_url},
+            "logs": {"transport": "streamable_http", "url": self.mcp_logs_url},
+        }
 
 
 settings = Settings()
