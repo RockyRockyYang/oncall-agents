@@ -89,20 +89,18 @@ async def planner(state: PlanExecuteState) -> dict[str, Any]:
     # Plan(steps=[...])
     chain = planner_prompt | llm.with_structured_output(Plan)
 
-    result = cast(
-        Plan,
-        await chain.ainvoke(
+    result = await chain.ainvoke(
             {
                 "messages": [("user", input_text)],
                 "tools_description": tools_description,
                 "experience_context": experience_context,
             }
-        ),
-    )
+        )
+    steps = result.steps if isinstance(result, Plan) else result.get("steps", [])  # type: ignore[union-attr]
 
-    logger.info(f"Plan generated: {len(result.steps)} steps")
-    for i, step in enumerate(result.steps, 1):
+    logger.info(f"Plan generated: {len(steps)} steps")
+    for i, step in enumerate(steps, 1):
         logger.info(f"  Step {i}: {step}")
 
     # 4. 返回，只更新 plan 字段
-    return {"plan": result.steps}
+    return {"plan": steps}
