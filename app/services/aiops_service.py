@@ -23,14 +23,20 @@ class AIOpsService:
 
         try:
             stream, config = aiops_agent.astream(alert, session_id)
+            step_count = 0
 
             async for event in stream:
                 for node_name, node_output in event.items():
+                    # LangGraph 1.x emits None for nodes that return {} (no state change)
+                    if node_output is None:
+                        logger.debug(f"Node '{node_name}' returned no update, skipping")
+                        continue
                     logger.info(f"Node '{node_name}' completed")
                     if node_name == NODE_PLANNER:
                         yield self._format_planner_event(node_output)
                     elif node_name == NODE_EXECUTOR:
-                        yield self._format_executor_event(node_output)
+                        step_count += 1
+                        yield self._format_executor_event(node_output, step_count)
                     elif node_name == NODE_REPLANNER:
                         yield self._format_replanner_event(node_output)
 
@@ -58,7 +64,7 @@ class AIOpsService:
             "plan": plan,
         }
 
-    def _format_executor_event(self, node_output: dict) -> dict:
+    def _format_executor_event(self, node_output: dict, step_count: int) -> dict:
         past_steps = node_output.get("past_steps", [])
         plan = node_output.get("plan", [])
         if past_steps:
@@ -66,7 +72,7 @@ class AIOpsService:
             return {
                 "type": "step_complete",
                 "stage": "step_executed",
-                "message": f"Step {len(past_steps)} completed",
+                "message": f"Step {step_count} completed",
                 "current_step": last_task,
                 "remaining_steps": len(plan),
             }

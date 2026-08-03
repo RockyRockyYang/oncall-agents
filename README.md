@@ -49,7 +49,7 @@ cp .env.example .env   # edit ANTHROPIC_API_KEY and VOYAGE_API_KEY
 uv run python mcp_servers/monitor_server.py
 
 # 2. Start the FastAPI server
-uv run uvicorn app.main:app --host 0.0.0.0 --port 9900 --reload
+uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 9900 --reload
 ```
 
 The MCP monitor server must be running before starting the FastAPI server — the agent connects to it during startup.
