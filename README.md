@@ -1,10 +1,10 @@
 # OnCall Agents
 
-An AI-powered on-call assistant that answers operational questions by retrieving relevant context from your runbooks. Built with Claude (Anthropic), Voyage AI embeddings, and Milvus as the vector store.
+An AI-powered on-call assistant that answers operational questions by retrieving relevant context from your runbooks. Built with Claude (Anthropic), OpenAI embeddings, and PostgreSQL + pgvector as the vector store.
 
 ## How it works
 
-1. **Ingest** — runbook markdown files in `docs/` are chunked, embedded via Voyage AI (`voyage-3-lite`), and stored in a Milvus collection (`oncall_kb`).
+1. **Ingest** — runbook markdown files in `docs/` are chunked, embedded via OpenAI (`text-embedding-3-small`), and stored in a PostgreSQL + pgvector collection (`oncall_kb`).
 2. **Query** — at query time the question is embedded and a cosine similarity search retrieves the top-k relevant chunks.
 3. **Answer** — the retrieved context is passed to Claude (`claude-sonnet-4-6`) to generate a grounded, runbook-backed answer.
 4. **MCP tools** — live system metrics (CPU, memory, processes) are exposed via a separate MCP server and loaded dynamically into the agent at startup.
@@ -14,8 +14,8 @@ An AI-powered on-call assistant that answers operational questions by retrieving
 | Layer | Technology |
 |---|---|
 | LLM | Anthropic Claude (Sonnet) |
-| Embeddings | Voyage AI `voyage-3-lite` (512-dim) |
-| Vector DB | Milvus v2.4 (standalone via Docker) |
+| Embeddings | OpenAI `text-embedding-3-small` (1536-dim) |
+| Vector DB | PostgreSQL 16 + pgvector (via Docker) |
 | API | FastAPI + uvicorn |
 | Agent orchestration | LangChain / LangGraph |
 | External tools | MCP (FastMCP + psutil) |
@@ -24,7 +24,7 @@ An AI-powered on-call assistant that answers operational questions by retrieving
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package manager
 - Docker & Docker Compose
-- API keys: `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`
+- API keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
 
 ## Setup
 
@@ -32,14 +32,14 @@ An AI-powered on-call assistant that answers operational questions by retrieving
 # 1. Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. Start Milvus (and its dependencies etcd + MinIO)
+# 2. Start PostgreSQL + pgvector
 docker compose up -d
 
 # 3. Install dependencies (creates .venv automatically)
 uv sync
 
 # 4. Copy the env template and fill in your keys
-cp .env.example .env   # edit ANTHROPIC_API_KEY and VOYAGE_API_KEY
+cp .env.example .env   # edit ANTHROPIC_API_KEY and OPENAI_API_KEY
 ```
 
 ## Run the API
@@ -57,30 +57,33 @@ The MCP monitor server must be running before starting the FastAPI server — th
 ## Testing
 
 All tests are integration tests and require:
-- Milvus running (`docker compose up -d`)
+- PostgreSQL running (`docker compose up -d`)
 - MCP monitor server running (`uv run python mcp_servers/monitor_server.py`)
 - Valid API keys in `.env`
 
 ```bash
 # Run all integration tests
-uv run pytest tests/ -v -m integration
+uv run python -m pytest tests/ -v -m integration
 
 # Run a specific test file
-uv run pytest tests/test_chat.py -v -m integration
-uv run pytest tests/test_mcp_server.py -v -m integration
-uv run pytest tests/test_dialogue.py -v -m integration
+uv run python -m pytest tests/api/test_chat.py -v
+uv run python -m pytest tests/mcp/test_monitor_server.py -v
+uv run python -m pytest tests/services/test_vector_store.py -v
 ```
 
 ### Test files
 
 | File | What it tests |
 |---|---|
-| `tests/test_chat.py` | SSE streaming, session memory via HTTP |
-| `tests/test_mcp_server.py` | MCP tool loading and responses |
-| `tests/test_dialogue.py` | Multi-turn conversation context |
-| `tests/test_ingest.py` | Document ingestion endpoint |
-| `tests/test_tools.py` | Local LangChain tools |
-| `tests/test_vector_store.py` | Milvus embed + search pipeline |
+| `tests/api/test_chat.py` | SSE streaming, session memory via HTTP |
+| `tests/api/test_dialogue.py` | Multi-turn conversation context |
+| `tests/api/test_ingest.py` | Document ingestion endpoint |
+| `tests/mcp/test_monitor_server.py` | MCP tool loading and responses |
+| `tests/mcp/test_logs_server.py` | Log search MCP tools |
+| `tests/tools/test_tools.py` | Local LangChain tools |
+| `tests/services/test_vector_store.py` | pgvector embed + search pipeline |
+| `tests/agent/aiops/` | AIOps planner, executor, replanner |
+| `tests/e2e/test_aiops_e2e.py` | Full AIOps investigation workflow |
 
 ## Configuration
 
@@ -89,9 +92,8 @@ All settings are in `app/config.py` and can be overridden via `.env`:
 | Variable | Default | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | Required |
-| `VOYAGE_API_KEY` | — | Required |
-| `MILVUS_HOST` | `localhost` | Milvus host |
-| `MILVUS_PORT` | `19530` | Milvus port |
+| `OPENAI_API_KEY` | — | Required (embeddings) |
+| `DATABASE_URL` | `postgresql+psycopg://oncall:oncall@localhost:5432/oncall` | PostgreSQL connection string |
 | `RAG_MODEL` | `claude-sonnet-4-6` | Claude model for answer generation |
 | `RAG_TOP_K` | `3` | Number of chunks to retrieve |
 | `CHUNK_MAX_SIZE` | `800` | Max characters per chunk |
@@ -105,14 +107,14 @@ All settings are in `app/config.py` and can be overridden via `.env`:
 app/
   agent/      # LangGraph agent definitions
   api/        # FastAPI route handlers
-  core/       # Shared infrastructure (Milvus client)
-  services/   # Business logic
+  core/       # Shared infrastructure
+  services/   # Business logic (vector store, RAG, AIOps)
   tools/      # LangChain tools
   config.py   # Settings
   main.py     # FastAPI app entrypoint
 mcp_servers/  # Standalone MCP tool servers
 docs/         # Runbook markdown files
-tests/        # pytest integration tests
+tests/        # pytest tests (api/, services/, agent/, mcp/, e2e/)
 docker-compose.yml
 pyproject.toml
 ```
