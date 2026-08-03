@@ -12,10 +12,8 @@ class Settings(BaseSettings):
     port: int = 9900
 
     anthropic_api_key: str = ""
-    voyage_api_key: str = ""
-
-    milvus_host: str = "localhost"
-    milvus_port: int = 19530
+    openai_api_key: str = ""
+    database_url: str = "postgresql+psycopg://oncall:oncall@localhost:5432/oncall"
 
     # RAG settings
     rag_model: str = "claude-sonnet-4-6"
