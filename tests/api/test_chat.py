@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 def test_chat_streams_response(client: TestClient) -> None:
     with client.stream(
         "POST",
-        "/chat",
+        "/api/chat",
         json={"message": "how do I find a runaway process?", "session_id": "test-1"},
     ) as response:
         assert response.status_code == 200
@@ -21,12 +21,12 @@ def test_chat_session_memory(client: TestClient) -> None:
     config = {"session_id": "test-memory-1"}
 
     with client.stream(
-        "POST", "/chat", json={"message": "what causes high CPU?", **config}
+        "POST", "/api/chat", json={"message": "what causes high CPU?", **config}
     ) as r1:
         list(r1.iter_lines())  # consume first turn
 
     with client.stream(
-        "POST", "/chat", json={"message": "what should I do next?", **config}
+        "POST", "/api/chat", json={"message": "what should I do next?", **config}
     ) as r2:
         chunks = " ".join(r2.iter_lines())
 
@@ -37,7 +37,7 @@ def test_chat_session_memory(client: TestClient) -> None:
 def test_chat_handles_unknown_topic(client: TestClient) -> None:
     with client.stream(
         "POST",
-        "/chat",
+        "/api/chat",
         json={
             "message": "how do I bake sourdough bread?",
             "session_id": "test-unknown",

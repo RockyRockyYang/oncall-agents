@@ -48,7 +48,7 @@ def test_investigate_full_flow(client: TestClient):
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
          patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": "# Root Cause: DB slow query"})):
 
-        with client.stream("POST", "/aiops/investigate",
+        with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "payment-service P99 > 3s", "session_id": "e2e-test"}) as response:
             assert response.status_code == 200
             assert "text/event-stream" in response.headers["content-type"]
@@ -72,7 +72,7 @@ def test_investigate_plan_content(client: TestClient):
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
          patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": ""})):
 
-        with client.stream("POST", "/aiops/investigate",
+        with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "high error rate", "session_id": "t1"}) as response:
             raw = b"".join(response.iter_bytes())
 
@@ -84,7 +84,7 @@ def test_investigate_plan_content(client: TestClient):
 def test_investigate_error_event(client: TestClient):
     """agent 抛异常时，SSE 流中应有 type=error 事件，且 HTTP 状态码仍为 200。"""
     with patch.object(aiops_agent, "astream", side_effect=Exception("MCP connection refused")):
-        with client.stream("POST", "/aiops/investigate",
+        with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "test alert", "session_id": "err-test"}) as response:
             # SSE 协议下错误也是 200，错误信息在 data 里
             assert response.status_code == 200
@@ -106,7 +106,7 @@ def test_investigate_stream_ends_after_complete(client: TestClient):
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
          patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": "# Final Report"})):
 
-        with client.stream("POST", "/aiops/investigate",
+        with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "disk full", "session_id": "t2"}) as response:
             raw = b"".join(response.iter_bytes())
 
@@ -119,7 +119,7 @@ def test_investigate_stream_ends_after_complete(client: TestClient):
 
 def test_investigate_missing_alert_returns_422(client: TestClient):
     """缺少必填字段 alert 时，FastAPI 应返回 422 Unprocessable Entity。"""
-    response = client.post("/aiops/investigate", json={"session_id": "no-alert"})
+    response = client.post("/api/aiops/investigate", json={"session_id": "no-alert"})
     assert response.status_code == 422
 
 
@@ -131,6 +131,6 @@ def test_investigate_default_session_id(client: TestClient):
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
          patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": ""})):
 
-        with client.stream("POST", "/aiops/investigate",
+        with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "some alert"}) as response:  # 没传 session_id
             assert response.status_code == 200

@@ -1,14 +1,15 @@
-import pytest
 import pathlib
+
+import pytest
 from fastapi.testclient import TestClient
 
 
 @pytest.mark.integration
 def test_ingest_document(client: TestClient) -> None:
-    text = pathlib.Path("docs/high_cpu.md").read_text()
+    file_bytes = pathlib.Path("docs/high_cpu.md").read_bytes()
     response = client.post(
-        "/ingest",
-        json={"source": "high_cpu.md", "text": text},
+        "/api/upload",
+        files={"file": ("high_cpu.md", file_bytes, "text/plain")},
         timeout=60.0,
     )
     assert response.status_code == 200
@@ -20,8 +21,8 @@ def test_ingest_document(client: TestClient) -> None:
 @pytest.mark.integration
 def test_ingest_empty_text(client: TestClient) -> None:
     response = client.post(
-        "/ingest",
-        json={"source": "empty.md", "text": ""},
+        "/api/upload",
+        files={"file": ("empty.md", b"", "text/plain")},
     )
     assert response.status_code == 400
 
@@ -29,13 +30,17 @@ def test_ingest_empty_text(client: TestClient) -> None:
 @pytest.mark.integration
 def test_end_to_end(client: TestClient) -> None:
     # ingest the runbook first
-    text = pathlib.Path("docs/high_cpu.md").read_text()
-    client.post("/ingest", json={"source": "high_cpu.md", "text": text}, timeout=60.0)
+    file_bytes = pathlib.Path("docs/high_cpu.md").read_bytes()
+    client.post(
+        "/api/upload",
+        files={"file": ("high_cpu.md", file_bytes, "text/plain")},
+        timeout=60.0,
+    )
 
     # ask a question and verify the answer references runbook content
     with client.stream(
         "POST",
-        "/chat",
+        "/api/chat",
         json={"message": "what are the symptoms of high CPU?", "session_id": "e2e-1"},
         timeout=60.0,
     ) as response:

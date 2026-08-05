@@ -1,28 +1,24 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
+
 from app.services.vector_store import VectorStoreService
 
 router = APIRouter()
 _svc = VectorStoreService()
 
 
-class IngestRequest(BaseModel):
-    source: str
-    text: str
-
-
-class IngestResponse(BaseModel):
+class UploadResponse(BaseModel):
     source: str
     chunks_inserted: int
 
 
-@router.post("/ingest", response_model=IngestResponse)
-def ingest(req: IngestRequest) -> IngestResponse:
-    chunks = [c.strip() for c in req.text.split("\n\n") if c.strip()]
+@router.post("/upload", response_model=UploadResponse)
+async def upload(file: UploadFile) -> UploadResponse:
+    content = await file.read()
+    text = content.decode("utf-8")
+    source = file.filename or "unknown"
+    chunks = [c.strip() for c in text.split("\n\n") if c.strip()]
     if not chunks:
         raise HTTPException(status_code=400, detail="No content to ingest.")
-    _svc.ingest(chunks, source=req.source)
-    return IngestResponse(source=req.source, chunks_inserted=len(chunks))
-
-
-# testing
+    _svc.ingest(chunks, source=source)
+    return UploadResponse(source=source, chunks_inserted=len(chunks))

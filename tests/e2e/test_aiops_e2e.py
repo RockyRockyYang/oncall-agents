@@ -36,10 +36,9 @@ def _parse_sse(text: str) -> list[dict]:
 def ingest_runbook():
     """Ingest docs/high_error_rate.md before running AIOps tests."""
     runbook_path = Path("docs/high_error_rate.md")
-    text = runbook_path.read_text()
     resp = httpx.post(
-        f"{BASE_URL}/ingest",
-        json={"source": "high_error_rate", "text": text},
+        f"{BASE_URL}/api/upload",
+        files={"file": ("high_error_rate.md", runbook_path.read_bytes(), "text/plain")},
         timeout=30,
     )
     assert resp.status_code == 200, f"Ingest failed: {resp.text}"
@@ -67,7 +66,7 @@ def test_aiops_investigate_event_sequence(ingest_runbook):
     with httpx.Client(timeout=120) as client:
         with client.stream(
             "POST",
-            f"{BASE_URL}/aiops/investigate",
+            f"{BASE_URL}/api/aiops/investigate",
             json={"alert": ALERT, "session_id": "e2e-full-flow"},
         ) as response:
             assert response.status_code == 200
@@ -92,7 +91,7 @@ def test_aiops_investigate_plan_has_steps(ingest_runbook):
     with httpx.Client(timeout=120) as client:
         with client.stream(
             "POST",
-            f"{BASE_URL}/aiops/investigate",
+            f"{BASE_URL}/api/aiops/investigate",
             json={"alert": ALERT, "session_id": "e2e-plan-check"},
         ) as response:
             raw = response.read().decode()
@@ -114,7 +113,7 @@ def test_aiops_investigate_report_is_markdown(ingest_runbook):
     with httpx.Client(timeout=120) as client:
         with client.stream(
             "POST",
-            f"{BASE_URL}/aiops/investigate",
+            f"{BASE_URL}/api/aiops/investigate",
             json={"alert": ALERT, "session_id": "e2e-report-check"},
         ) as response:
             raw = response.read().decode()
@@ -133,7 +132,7 @@ def test_aiops_investigate_report_is_markdown(ingest_runbook):
 def test_aiops_missing_alert_returns_422():
     """Request without required 'alert' field should return 422."""
     resp = httpx.post(
-        f"{BASE_URL}/aiops/investigate",
+        f"{BASE_URL}/api/aiops/investigate",
         json={"session_id": "no-alert"},
         timeout=10,
     )
