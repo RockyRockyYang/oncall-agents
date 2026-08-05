@@ -62,7 +62,10 @@ class ChatService:
                             yield {"type": "content", "data": content}
                         elif isinstance(content, list):
                             for block in content:
-                                if isinstance(block, dict) and block.get("type") == "text":
+                                if (
+                                    isinstance(block, dict)
+                                    and block.get("type") == "text"
+                                ):
                                     yield {"type": "content", "data": block["text"]}
 
             logger.info("Stream complete | session_id={}", session_id)

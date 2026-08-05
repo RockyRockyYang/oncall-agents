@@ -1,5 +1,5 @@
 from textwrap import dedent
-from typing import Any, List
+from typing import Any, List, Literal
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
@@ -30,9 +30,8 @@ class Response(BaseModel):
 
 
 class Act(BaseModel):
-    action: str = Field(
+    action: Literal["continue", "replan", "respond"] = Field(
         description=(
-            "Next action. Must be one of:\n"
             f"- 'respond': Root cause is clear or >= {MAX_REPLAN_STEPS} steps executed — generate final report\n"
             "- 'continue': Remaining plan is still valid — keep executing\n"
             "- 'replan': Findings point to a different root cause — provide updated steps"
