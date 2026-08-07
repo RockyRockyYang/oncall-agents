@@ -64,7 +64,9 @@ _DEPLOYMENTS = {
 @mcp.tool()
 def search_logs(service: str, query: str = "", limit: int = 20) -> str:
     """Search raw log entries for a service. Optionally filter by keyword."""
-    logs = _LOGS.get(service, [])
+    if service not in _LOGS:
+        return json.dumps({"service": service, "error": "no data found"})
+    logs = _LOGS[service]
     if query:
         logs = [l for l in logs if query.lower() in l["message"].lower()]
     return json.dumps(logs[:limit], indent=2)
@@ -73,7 +75,9 @@ def search_logs(service: str, query: str = "", limit: int = 20) -> str:
 @mcp.tool()
 def get_error_summary(service: str, window_minutes: int = 15) -> str:
     """Get error counts grouped by type. Returns error rate and dominant error types."""
-    logs = _LOGS.get(service, [])
+    if service not in _LOGS:
+        return json.dumps({"service": service, "error": "no data found"})
+    logs = _LOGS[service]
     errors = [l for l in logs if l["level"] == "ERROR"]
 
     counts: dict[str, int] = {}
@@ -94,7 +98,9 @@ def get_error_summary(service: str, window_minutes: int = 15) -> str:
 @mcp.tool()
 def get_service_deployments(service: str, hours: int = 2) -> str:
     """Get recent deployment events for a service."""
-    return json.dumps(_DEPLOYMENTS.get(service, []), indent=2)
+    if service not in _DEPLOYMENTS:
+        return json.dumps({"service": service, "error": "no data found"})
+    return json.dumps(_DEPLOYMENTS[service], indent=2)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
-import { v4 as uuidv4 } from 'uuid'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { getSessionId } from '../lib/session'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -10,17 +10,6 @@ export interface ChatMessage {
 interface ChatEvent {
   type: 'content' | 'tool_call' | 'done' | 'error'
   data?: unknown
-}
-
-const SESSION_KEY = 'oncall_session_id'
-
-function getSessionId(): string {
-  let id = localStorage.getItem(SESSION_KEY)
-  if (!id) {
-    id = uuidv4()
-    localStorage.setItem(SESSION_KEY, id)
-  }
-  return id
 }
 
 export function useChat() {
