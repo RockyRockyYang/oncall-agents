@@ -4,14 +4,15 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useChat } from '../hooks/useChat'
+import type { useChat } from '../hooks/useChat'
 
 interface ChatAreaProps {
+  chat: Pick<ReturnType<typeof useChat>, 'messages' | 'sendMessage' | 'isStreaming'>
   onOpenAIOps: () => void
 }
 
-function ChatArea({ onOpenAIOps }: ChatAreaProps) {
-  const { messages, sendMessage, isStreaming } = useChat()
+function ChatArea({ chat, onOpenAIOps }: ChatAreaProps) {
+  const { messages, sendMessage, isStreaming } = chat
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -35,13 +36,13 @@ function ChatArea({ onOpenAIOps }: ChatAreaProps) {
   return (
     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, bgcolor: '#fff' }}>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <Typography sx={{ fontWeight: 600, color: '#333' }}>Oncall Agent</Typography>
+        <Typography sx={{ fontWeight: 600, color: '#333' }}>智能 Oncall 助手</Typography>
         <Button
           variant="outlined"
           onClick={onOpenAIOps}
           sx={{ textTransform: 'none', borderRadius: '10px', borderColor: '#e5e5e5', color: '#333' }}
         >
-          AI Ops
+          AI 运维
         </Button>
       </Toolbar>
 
@@ -106,7 +107,7 @@ function ChatArea({ onOpenAIOps }: ChatAreaProps) {
             fullWidth
             multiline
             maxRows={6}
-            placeholder="Message Oncall Agent…"
+            placeholder="问问 Oncall 助手…"
             variant="standard"
             value={input}
             onChange={(e) => setInput(e.target.value)}

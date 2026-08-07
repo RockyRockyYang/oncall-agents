@@ -1,6 +1,13 @@
 import { useState, useCallback, useRef } from 'react'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { getSessionId } from '../lib/session'
+import {
+  getActiveSessionId,
+  setActiveSessionId,
+  createSessionId,
+  getSessionHistory,
+  addSessionToHistory,
+  type SessionSummary,
+} from '../lib/session'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -13,14 +20,17 @@ interface ChatEvent {
 }
 
 export function useChat() {
+  const [sessionId, setSessionId] = useState(getActiveSessionId)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [sessionId] = useState(getSessionId)
+  const [history, setHistory] = useState<SessionSummary[]>(getSessionHistory)
   const abortRef = useRef<AbortController | null>(null)
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isStreaming) return
+
+      setHistory(addSessionToHistory(sessionId, text))
 
       // 用户消息 + 一条待填充的空 assistant 消息，一起加入历史
       setMessages((prev) => [...prev, { role: 'user', content: text }, { role: 'assistant', content: '' }])
@@ -78,5 +88,23 @@ export function useChat() {
     [isStreaming, sessionId],
   )
 
-  return { messages, sendMessage, isStreaming }
+  const newChat = useCallback(() => {
+    setSessionId(createSessionId())
+    setMessages([])
+  }, [])
+
+  const loadSession = useCallback(
+    async (id: string) => {
+      if (id === sessionId) return
+      setActiveSessionId(id)
+      setSessionId(id)
+      setMessages([])
+      const res = await fetch(`/api/chat/session/${id}`)
+      const data = await res.json()
+      setMessages(data.messages)
+    },
+    [sessionId],
+  )
+
+  return { messages, sendMessage, isStreaming, sessionId, history, newChat, loadSession }
 }

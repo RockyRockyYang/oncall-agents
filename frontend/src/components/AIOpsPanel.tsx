@@ -36,7 +36,7 @@ function AIOpsPanel({ isOpen, onClose }: AIOpsPanelProps) {
     <Drawer anchor="right" open={isOpen} onClose={onClose}>
       <Box sx={{ width: 420, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography sx={{ fontWeight: 600 }}>AI Ops Investigation</Typography>
+          <Typography sx={{ fontWeight: 600 }}>故障调查</Typography>
           <IconButton onClick={onClose} size="small">
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -45,7 +45,7 @@ function AIOpsPanel({ isOpen, onClose }: AIOpsPanelProps) {
         <TextField
           multiline
           rows={4}
-          placeholder="Paste alert text here…"
+          placeholder="粘贴告警内容…"
           value={alertText}
           onChange={(e) => setAlertText(e.target.value)}
           disabled={isRunning}
@@ -58,7 +58,7 @@ function AIOpsPanel({ isOpen, onClose }: AIOpsPanelProps) {
           disabled={isRunning || !alertText.trim()}
           sx={{ bgcolor: '#000', textTransform: 'none', borderRadius: '10px', '&:hover': { bgcolor: '#333' } }}
         >
-          {isRunning ? '调查中…' : 'Investigate'}
+          {isRunning ? '调查中…' : '开始调查'}
         </Button>
 
         {(plan.length > 0 || error) && <Divider />}

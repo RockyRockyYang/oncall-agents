@@ -14,14 +14,37 @@ class ChatService:
         """从 MemorySaver 读取会话历史，过滤掉系统消息，只返回用户和助手的消息。"""
         config = RunnableConfig(configurable={"thread_id": session_id})
         state = agent.get_state(config=config)
-        return [
-            {
-                "role": "user" if isinstance(m, HumanMessage) else "assistant",
-                "content": m.content,
-            }
-            for m in state.values.get("messages", [])
-            if isinstance(m, (HumanMessage, AIMessage))
-        ]
+        result = []
+        for m in state.values.get("messages", []):
+            if not isinstance(m, (HumanMessage, AIMessage)):
+                continue
+            content = self._extract_text(m.content)
+            if isinstance(m, AIMessage) and not content:
+                # 纯 tool_use、没有文本的中间轮次（比如"我先查一下工具"这类无文字的调用），
+                # 前端没有内容可展示，跳过，避免出现一个内容永远是空的气泡。
+                continue
+            result.append(
+                {"role": "user" if isinstance(m, HumanMessage) else "assistant", "content": content}
+            )
+        return result
+
+    @staticmethod
+    def _extract_text(content: str | list) -> str:
+        """把 AIMessage.content 统一成纯文本。
+
+        Claude 在带工具调用的轮次里，content 不是字符串，而是
+        [{"type": "text", ...}, {"type": "tool_use", ...}, ...] 这样的 block 列表，
+        跟 stream() 里处理 chunk.content 的逻辑保持一致：只取 text block。
+        """
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return "".join(
+                block.get("text", "")
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            )
+        return ""
 
     def clear_session(self, session_id: str) -> None:
         """清空指定会话的消息历史。MemorySaver 以 thread_id 为键，写入空列表即覆盖。"""

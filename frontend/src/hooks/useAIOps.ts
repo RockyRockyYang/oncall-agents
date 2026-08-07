@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { getSessionId } from '../lib/session'
+import { getActiveSessionId } from '../lib/session'
 
 export type AIOpsStatus = 'idle' | 'running' | 'done' | 'error'
 
@@ -34,7 +34,7 @@ export function useAIOps() {
         await fetchEventSource('/api/aiops/investigate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alert, session_id: getSessionId() }),
+          body: JSON.stringify({ alert, session_id: getActiveSessionId() }),
           openWhenHidden: true, // tab 切到后台时不要断流
           onmessage(ev) {
             // 防御性解析：中间层（代理/心跳帧）可能混入空帧或非 JSON 数据，
