@@ -1,6 +1,6 @@
 # OnCall Agents
 
-An AI-powered on-call assistant that answers operational questions by retrieving relevant context from your runbooks. Built with Claude (Anthropic), OpenAI embeddings, and PostgreSQL + pgvector as the vector store.
+An AI-powered on-call assistant that answers operational questions by retrieving relevant context from your runbooks. Built with Claude (Anthropic), OpenAI embeddings, and PostgreSQL + pgvector as the vector store. Includes a React web UI (chat + AI Ops investigation panel + knowledge base upload).
 
 ## How it works
 
@@ -19,10 +19,12 @@ An AI-powered on-call assistant that answers operational questions by retrieving
 | API | FastAPI + uvicorn |
 | Agent orchestration | LangChain / LangGraph |
 | External tools | MCP (FastMCP + psutil) |
+| Frontend | React + TypeScript + Vite + MUI |
 
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package manager
+- Node.js (LTS) — for the frontend
 - Docker & Docker Compose
 - API keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
 
@@ -48,17 +50,32 @@ cp .env.example .env   # edit ANTHROPIC_API_KEY and OPENAI_API_KEY
 # 1. Start the MCP monitor server (separate process)
 uv run python mcp_servers/monitor_server.py
 
-# 2. Start the FastAPI server
+# 2. Start the MCP logs server (separate process)
+uv run python mcp_servers/logs_server.py
+
+# 3. Start the FastAPI server
 uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 9900 --reload
 ```
 
-The MCP monitor server must be running before starting the FastAPI server — the agent connects to it during startup.
+Both MCP servers must be running before starting the FastAPI server — the agent connects to them during startup. Skipping the logs server won't error at startup, but any log/error-summary/deployment tool call will silently return "no data found".
+
+## Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Opens at `localhost:5173`. The dev server proxies `/api/*` to the FastAPI backend at `localhost:9900`
+(see `frontend/vite.config.ts`), so the backend (and MCP servers) need to be running first.
 
 ## Testing
 
 All tests are integration tests and require:
 - PostgreSQL running (`docker compose up -d`)
 - MCP monitor server running (`uv run python mcp_servers/monitor_server.py`)
+- MCP logs server running (`uv run python mcp_servers/logs_server.py`)
 - Valid API keys in `.env`
 
 ```bash
@@ -100,6 +117,7 @@ All settings are in `app/config.py` and can be overridden via `.env`:
 | `CHUNK_OVERLAP` | `100` | Overlap between chunks |
 | `PORT` | `9900` | API server port |
 | `MCP_MONITOR_URL` | `http://localhost:8004/mcp` | MCP monitor server URL |
+| `MCP_LOGS_URL` | `http://localhost:8003/mcp` | MCP logs server URL |
 
 ## Project structure
 
@@ -115,6 +133,11 @@ app/
 mcp_servers/  # Standalone MCP tool servers
 docs/         # Runbook markdown files
 tests/        # pytest tests (api/, services/, agent/, mcp/, e2e/)
+frontend/     # React + TypeScript + Vite web UI
+  src/
+    components/  # Sidebar, ChatArea, AIOpsPanel, KnowledgeBaseDialog
+    hooks/       # useChat, useAIOps (SSE streaming)
+    lib/         # session.ts (session id + local history)
 docker-compose.yml
 pyproject.toml
 ```
