@@ -48,13 +48,13 @@ cp .env.example .env   # edit ANTHROPIC_API_KEY and OPENAI_API_KEY
 
 ```bash
 # 1. Start the MCP monitor server (separate process)
-uv run python mcp_servers/monitor_server.py
+uv run mcp_servers/monitor_server.py
 
 # 2. Start the MCP logs server (separate process)
-uv run python mcp_servers/logs_server.py
+uv run mcp_servers/logs_server.py
 
 # 3. Start the FastAPI server
-uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 9900 --reload
+uv run oncall-api
 ```
 
 Both MCP servers must be running before starting the FastAPI server — the agent connects to them during startup. Skipping the logs server won't error at startup, but any log/error-summary/deployment tool call will silently return "no data found".
