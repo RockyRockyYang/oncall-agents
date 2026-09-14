@@ -20,14 +20,19 @@ function ChatArea({ chat, onOpenAIOps }: ChatAreaProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || isStreaming) return
-    sendMessage(input)
+    const text = input
     setInput('')
+    // 发送失败时把文字放回输入框，相当于免做一个"重试"按钮——用户改改内容直接再发一次即可
+    const ok = await sendMessage(text)
+    if (!ok) setInput(text)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // isComposing 为 true 说明中文/日文/韩文输入法还在组合候选字阶段，
+    // 这时候的 Enter 是"确认候选字"，不是"发送消息"，否则会把没打完的半截拼音发出去
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       handleSend()
     }

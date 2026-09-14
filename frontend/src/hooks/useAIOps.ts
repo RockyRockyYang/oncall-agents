@@ -69,7 +69,8 @@ export function useAIOps() {
           },
         })
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err))
+        console.error('AIOps investigate failed:', err)
+        setError('连接后端失败，请确认服务已启动后重试')
         setStatus('error')
       }
     },

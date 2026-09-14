@@ -34,7 +34,17 @@ function AIOpsPanel({ isOpen, onClose }: AIOpsPanelProps) {
 
   return (
     <Drawer anchor="right" open={isOpen} onClose={onClose}>
-      <Box sx={{ width: 420, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
+      <Box
+        sx={{
+          width: { xs: '100vw', sm: 420 },
+          maxWidth: '100vw',
+          p: 2.5,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+          height: '100%',
+        }}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography sx={{ fontWeight: 600 }}>故障调查</Typography>
           <IconButton onClick={onClose} size="small">

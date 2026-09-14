@@ -27,8 +27,8 @@ export function useChat() {
   const abortRef = useRef<AbortController | null>(null)
 
   const sendMessage = useCallback(
-    async (text: string) => {
-      if (!text.trim() || isStreaming) return
+    async (text: string): Promise<boolean> => {
+      if (!text.trim() || isStreaming) return false
 
       setHistory(addSessionToHistory(sessionId, text))
 
@@ -47,6 +47,7 @@ export function useChat() {
 
       const controller = new AbortController()
       abortRef.current = controller
+      let ok = true
 
       try {
         await fetchEventSource('/api/chat', {
@@ -80,10 +81,13 @@ export function useChat() {
           },
         })
       } catch (err) {
-        appendToLast(`\n\n⚠️ 连接中断: ${err instanceof Error ? err.message : String(err)}`)
+        console.error('Chat request failed:', err)
+        ok = false
+        appendToLast('\n\n⚠️ 连接后端失败，请确认服务已启动后重试')
       } finally {
         setIsStreaming(false)
       }
+      return ok
     },
     [isStreaming, sessionId],
   )
