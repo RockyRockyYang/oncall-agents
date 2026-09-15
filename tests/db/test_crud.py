@@ -10,8 +10,9 @@ from app.db.crud import (
 )
 
 
-async def test_create_session_if_new_is_idempotent():
+async def test_create_session_if_new_is_idempotent(temp_session_ids):
     session_id = str(uuid.uuid4())
+    temp_session_ids.append(session_id)
     await create_session_if_new(session_id, "first title")
     await create_session_if_new(session_id, "second title, should be ignored")
 
@@ -20,10 +21,12 @@ async def test_create_session_if_new_is_idempotent():
     assert matching[0]["title"] == "first title"
 
 
-async def test_list_sessions_orders_newest_first():
+async def test_list_sessions_orders_newest_first(temp_session_ids):
     older_id = str(uuid.uuid4())
+    temp_session_ids.append(older_id)
     await create_session_if_new(older_id, "older")
     newer_id = str(uuid.uuid4())
+    temp_session_ids.append(newer_id)
     await create_session_if_new(newer_id, "newer")
 
     ids = [s["id"] for s in await list_sessions()]

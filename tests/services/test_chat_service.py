@@ -1,10 +1,21 @@
 import asyncio
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from app.db.crud import delete_session
 from app.services.chat_service import ChatService
 
 # sessions.id 现在是 Postgres 的 UUID 类型，插入必须是合法 UUID 格式
 SESSION_ID = "11111111-1111-1111-1111-111111111111"
+
+
+@pytest.fixture(autouse=True)
+def cleanup_session():
+    """stream() 每次都会往 sessions 表写一行（真实开发库，不是 mock），测完删掉，
+    不然每跑一次这个文件就会在历史列表里多出一条 id 固定的 "test" 会话。"""
+    yield
+    asyncio.run(delete_session(SESSION_ID))
 
 
 async def _collect(gen):

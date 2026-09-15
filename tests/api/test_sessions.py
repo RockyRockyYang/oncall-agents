@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 from app.db.crud import create_session_if_new
 
 
-async def test_get_sessions_includes_newly_created_session(client: TestClient):
+async def test_get_sessions_includes_newly_created_session(client: TestClient, temp_session_ids):
     session_id = str(uuid.uuid4())
+    temp_session_ids.append(session_id)
     await create_session_if_new(session_id, "sessions api test")
 
     response = client.get("/api/sessions")
