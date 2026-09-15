@@ -50,7 +50,11 @@ class AIOpsService:
             logger.info(f"[{session_id}] Investigation complete")
 
         except Exception as e:
-            logger.error(f"[{session_id}] Investigation failed: {e}", exc_info=True)
+            # 注意：不能用 f-string 提前把 {e} 拼进消息里再传给 logger.error —— 如果异常文本本身
+            # 带花括号（比如这次踩到的 Anthropic 错误信息里有 {'type': 'error', ...}），loguru
+            # 会把它当成自己的格式化占位符去解析，直接 KeyError 崩掉，把真正的报错信息吞掉。
+            # 用 loguru 自己的 {} 占位符 + 位置参数传参，异常文本原样插入，不会被二次解析。
+            logger.exception("[{}] Investigation failed: {}", session_id, e)
             yield {"type": "error", "stage": "error", "message": str(e)}
 
     # ───────────────── 事件格式化 ─────────────────────────────────
