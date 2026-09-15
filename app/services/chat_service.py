@@ -5,6 +5,7 @@ from langchain_core.runnables import RunnableConfig
 from loguru import logger
 
 from app.agent import agent
+from app.db import create_session_if_new
 
 
 class ChatService:
@@ -65,6 +66,7 @@ class ChatService:
         """
         config = RunnableConfig(configurable={"thread_id": session_id})
         try:
+            await create_session_if_new(session_id, message)
             async for event in agent.astream_events(
                 {"messages": [HumanMessage(content=message)]},
                 config=config,

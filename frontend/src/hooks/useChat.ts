@@ -1,11 +1,10 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import {
   getActiveSessionId,
   setActiveSessionId,
   createSessionId,
-  getSessionHistory,
-  addSessionToHistory,
+  fetchSessionHistory,
   type SessionSummary,
 } from '../lib/session'
 
@@ -23,14 +22,16 @@ export function useChat() {
   const [sessionId, setSessionId] = useState(getActiveSessionId)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [history, setHistory] = useState<SessionSummary[]>(getSessionHistory)
+  const [history, setHistory] = useState<SessionSummary[]>([])
   const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    fetchSessionHistory().then(setHistory)
+  }, [])
 
   const sendMessage = useCallback(
     async (text: string): Promise<boolean> => {
       if (!text.trim() || isStreaming) return false
-
-      setHistory(addSessionToHistory(sessionId, text))
 
       // 用户消息 + 一条待填充的空 assistant 消息，一起加入历史
       setMessages((prev) => [...prev, { role: 'user', content: text }, { role: 'assistant', content: '' }])
@@ -86,6 +87,7 @@ export function useChat() {
         appendToLast('\n\n⚠️ 连接后端失败，请确认服务已启动后重试')
       } finally {
         setIsStreaming(false)
+        fetchSessionHistory().then(setHistory)
       }
       return ok
     },

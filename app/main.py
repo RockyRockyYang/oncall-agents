@@ -10,7 +10,9 @@ from app.api.aiops import router as aiops_router
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.ingest import router as ingest_router
+from app.api.sessions import router as sessions_router
 from app.config import settings
+from app.db import engine
 
 
 @asynccontextmanager
@@ -24,6 +26,7 @@ async def lifespan(app: FastAPI):
         await aiops_agent.use_checkpointer(checkpointer)
         logger.info("Postgres checkpointer ready")
         yield
+    await engine.dispose()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -31,6 +34,7 @@ app.include_router(health_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(ingest_router, prefix="/api")
 app.include_router(aiops_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
 
 
 def run() -> None:
