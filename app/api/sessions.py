@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.db import list_sessions
+from app.db.crud import list_sessions
 
 router = APIRouter()
 

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     mcp_monitor_url: str = "http://localhost:8004/mcp"
     mcp_logs_url: str = "http://localhost:8003/mcp"
 
+    # auth settings
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 24
+
     @property
     def mcp_servers(self) -> dict:
         return {

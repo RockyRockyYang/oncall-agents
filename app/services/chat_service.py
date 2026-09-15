@@ -5,7 +5,7 @@ from langchain_core.runnables import RunnableConfig
 from loguru import logger
 
 from app.agent import agent
-from app.db import create_session_if_new
+from app.db.crud import create_session_if_new
 
 
 class ChatService:
