@@ -10,10 +10,10 @@ from app.agent import agent
 class ChatService:
     """Chat 业务逻辑层。负责与 RAG Agent 交互，API 层只做 HTTP 包装。"""
 
-    def get_session(self, session_id: str) -> list[dict]:
-        """从 MemorySaver 读取会话历史，过滤掉系统消息，只返回用户和助手的消息。"""
+    async def get_session(self, session_id: str) -> list[dict]:
+        """从 checkpointer 读取会话历史，过滤掉系统消息，只返回用户和助手的消息。"""
         config = RunnableConfig(configurable={"thread_id": session_id})
-        state = agent.get_state(config=config)
+        state = await agent.aget_state(config=config)
         result = []
         for m in state.values.get("messages", []):
             if not isinstance(m, (HumanMessage, AIMessage)):
@@ -46,10 +46,10 @@ class ChatService:
             )
         return ""
 
-    def clear_session(self, session_id: str) -> None:
-        """清空指定会话的消息历史。MemorySaver 以 thread_id 为键，写入空列表即覆盖。"""
+    async def clear_session(self, session_id: str) -> None:
+        """清空指定会话的消息历史。checkpointer 以 thread_id 为键，写入空列表即覆盖。"""
         config = RunnableConfig(configurable={"thread_id": session_id})
-        agent.update_state(config=config, values={"messages": []})
+        await agent.aupdate_state(config=config, values={"messages": []})
 
     async def stream(self, message: str, session_id: str) -> AsyncGenerator[dict, None]:
         """

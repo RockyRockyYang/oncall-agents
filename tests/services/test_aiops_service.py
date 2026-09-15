@@ -21,7 +21,7 @@ async def test_execute_yields_plan_event():
     mock_config = RunnableConfig(configurable={"thread_id": "test"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": ""})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": ""})):
 
         events = [e async for e in aiops_service.execute("test alert", "test")]
 
@@ -38,7 +38,7 @@ async def test_execute_yields_step_complete_event():
     mock_config = RunnableConfig(configurable={"thread_id": "test"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": ""})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": ""})):
 
         events = [e async for e in aiops_service.execute("test alert", "test")]
 
@@ -56,7 +56,7 @@ async def test_execute_yields_report_and_complete():
     mock_config = RunnableConfig(configurable={"thread_id": "test"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": "# Root Cause: DB pool exhausted"})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": "# Root Cause: DB pool exhausted"})):
 
         events = [e async for e in aiops_service.execute("test alert", "test")]
 

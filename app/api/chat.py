@@ -28,14 +28,14 @@ async def chat(request: ChatRequest) -> EventSourceResponse:
 
 
 @router.get("/chat/session/{session_id}")
-def get_session(session_id: str):
-    messages = chat_service.get_session(session_id)
+async def get_session(session_id: str):
+    messages = await chat_service.get_session(session_id)
     return {"session_id": session_id, "messages": messages}
 
 
 @router.delete("/chat/session/{session_id}")
-def delete_session(session_id: str) -> dict:
-    chat_service.clear_session(session_id)
+async def delete_session(session_id: str) -> dict:
+    await chat_service.clear_session(session_id)
     return {"session_id": session_id, "cleared": True}
 
 

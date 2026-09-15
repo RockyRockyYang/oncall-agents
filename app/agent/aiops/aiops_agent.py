@@ -5,7 +5,7 @@ START → planner → executor → replanner ─┬─ (有 response) → END
 """
 
 from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, StateGraph
 from loguru import logger
 
@@ -21,11 +21,12 @@ NODE_REPLANNER = "replanner"
 
 class AIOpsAgent:
     def __init__(self) -> None:
-        self.checkpointer = MemorySaver()
-        self.graph = self._build_graph()
-        logger.info("AIOpsAgent initialized")
+        # 图先不编译——编译需要真正的 checkpointer，而 Postgres 版 checkpointer
+        # 要在 FastAPI lifespan 里才能异步建好。在那之前 self.graph 是 None。
+        self.graph = None
+        logger.info("AIOpsAgent created (graph not yet compiled)")
 
-    def _build_graph(self):
+    def _build_graph(self, checkpointer: BaseCheckpointSaver):
         """构建 Plan-Execute-Replan 工作流图。"""
         workflow = StateGraph(PlanExecuteState)
 
@@ -50,7 +51,12 @@ class AIOpsAgent:
             {NODE_EXECUTOR: NODE_EXECUTOR, END: END},
         )
 
-        return workflow.compile(checkpointer=self.checkpointer)
+        return workflow.compile(checkpointer=checkpointer)
+
+    async def use_checkpointer(self, checkpointer: BaseCheckpointSaver) -> None:
+        """在 FastAPI lifespan 里调用一次：拿到真正的 checkpointer 后才编译图。"""
+        self.graph = self._build_graph(checkpointer)
+        logger.info("AIOpsAgent graph compiled")
 
     def astream(self, alert: str, session_id: str):
         """
@@ -76,8 +82,8 @@ class AIOpsAgent:
             config,
         )
 
-    def get_state(self, config: RunnableConfig):
-        return self.graph.get_state(config)
+    async def aget_state(self, config: RunnableConfig):
+        return await self.graph.aget_state(config)
 
 
 aiops_agent = AIOpsAgent()

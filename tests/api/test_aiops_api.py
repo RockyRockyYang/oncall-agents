@@ -46,7 +46,7 @@ def test_investigate_full_flow(client: TestClient):
     mock_config = RunnableConfig(configurable={"thread_id": "e2e-test"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": "# Root Cause: DB slow query"})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": "# Root Cause: DB slow query"})):
 
         with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "payment-service P99 > 3s", "session_id": "e2e-test"}) as response:
@@ -70,7 +70,7 @@ def test_investigate_plan_content(client: TestClient):
     mock_config = RunnableConfig(configurable={"thread_id": "t1"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": ""})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": ""})):
 
         with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "high error rate", "session_id": "t1"}) as response:
@@ -104,7 +104,7 @@ def test_investigate_stream_ends_after_complete(client: TestClient):
     mock_config = RunnableConfig(configurable={"thread_id": "t2"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": "# Final Report"})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": "# Final Report"})):
 
         with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "disk full", "session_id": "t2"}) as response:
@@ -129,7 +129,7 @@ def test_investigate_default_session_id(client: TestClient):
     mock_config = RunnableConfig(configurable={"thread_id": "default"})
 
     with patch.object(aiops_agent, "astream", return_value=(_fake_stream(stream_events), mock_config)), \
-         patch.object(aiops_agent, "get_state", return_value=MagicMock(values={"response": ""})):
+         patch.object(aiops_agent, "aget_state", return_value=MagicMock(values={"response": ""})):
 
         with client.stream("POST", "/api/aiops/investigate",
                            json={"alert": "some alert"}) as response:  # 没传 session_id

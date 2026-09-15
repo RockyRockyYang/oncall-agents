@@ -8,7 +8,7 @@ Graph structure:
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, SystemMessage
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 from loguru import logger
@@ -43,10 +43,12 @@ async def tools_node(state: MessagesState):
 
 class RAGAgent:
     def __init__(self) -> None:
-        self.graph = self._build_graph()
-        logger.info("RAG agent initialized")
+        # 图先不编译——编译需要真正的 checkpointer，而 Postgres 版 checkpointer
+        # 要在 FastAPI lifespan 里才能异步建好。在那之前 self.graph 是 None。
+        self.graph = None
+        logger.info("RAG agent created (graph not yet compiled)")
 
-    def _build_graph(self):
+    def _build_graph(self, checkpointer: BaseCheckpointSaver):
         graph = StateGraph(MessagesState)
 
         graph.add_node("llm", llm_node)
@@ -62,16 +64,21 @@ class RAGAgent:
         graph.add_conditional_edges("llm", should_continue)
         graph.add_edge("tools", "llm")
 
-        return graph.compile(checkpointer=MemorySaver())
+        return graph.compile(checkpointer=checkpointer)
+
+    async def use_checkpointer(self, checkpointer: BaseCheckpointSaver) -> None:
+        """在 FastAPI lifespan 里调用一次：拿到真正的 checkpointer 后才编译图。"""
+        self.graph = self._build_graph(checkpointer)
+        logger.info("RAG agent graph compiled")
 
     def astream_events(self, *args, **kwargs):
         return self.graph.astream_events(*args, **kwargs)
 
-    def get_state(self, *args, **kwargs):
-        return self.graph.get_state(*args, **kwargs)
+    async def aget_state(self, *args, **kwargs):
+        return await self.graph.aget_state(*args, **kwargs)
 
-    def update_state(self, *args, **kwargs):
-        return self.graph.update_state(*args, **kwargs)
+    async def aupdate_state(self, *args, **kwargs):
+        return await self.graph.aupdate_state(*args, **kwargs)
 
 
 agent = RAGAgent()

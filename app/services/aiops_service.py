@@ -41,7 +41,7 @@ class AIOpsService:
                         yield self._format_replanner_event(node_output)
 
             # 从 checkpointer 拿最终 response
-            final_state = aiops_agent.get_state(config)
+            final_state = await aiops_agent.aget_state(config)
             final_response = (
                 final_state.values.get("response", "") if final_state else ""
             )
