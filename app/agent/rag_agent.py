@@ -80,5 +80,9 @@ class RAGAgent:
     async def aupdate_state(self, *args, **kwargs):
         return await self.graph.aupdate_state(*args, **kwargs)
 
+    async def adelete_thread(self, thread_id: str) -> None:
+        """删除某个 thread 在 checkpointer 里的全部数据（对话内容本身，不是 sessions 表那行）。"""
+        await self.graph.checkpointer.adelete_thread(thread_id)
+
 
 agent = RAGAgent()

@@ -31,3 +31,7 @@ export async function fetchSessionHistory(): Promise<SessionSummary[]> {
   const data = await res.json()
   return data.sessions
 }
+
+export async function removeSession(id: string): Promise<void> {
+  await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+}

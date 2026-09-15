@@ -18,6 +18,7 @@ function App() {
         activeSessionId={chat.sessionId}
         onNewChat={chat.newChat}
         onSelectSession={chat.loadSession}
+        onDeleteSession={chat.deleteSession}
         onOpenKnowledgeBase={() => setIsKbOpen(true)}
       />
       <ChatArea chat={chat} onOpenAIOps={() => setIsAIOpsOpen(true)} />

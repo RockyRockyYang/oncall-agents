@@ -5,6 +5,7 @@ import {
   setActiveSessionId,
   createSessionId,
   fetchSessionHistory,
+  removeSession,
   type SessionSummary,
 } from '../lib/session'
 
@@ -112,5 +113,16 @@ export function useChat() {
     [sessionId],
   )
 
-  return { messages, sendMessage, isStreaming, sessionId, history, newChat, loadSession }
+  const deleteSession = useCallback(
+    async (id: string) => {
+      await removeSession(id)
+      if (id === sessionId) {
+        newChat()
+      }
+      fetchSessionHistory().then(setHistory)
+    },
+    [sessionId, newChat],
+  )
+
+  return { messages, sendMessage, isStreaming, sessionId, history, newChat, loadSession, deleteSession }
 }

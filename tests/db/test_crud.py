@@ -3,6 +3,7 @@ import uuid
 from app.db.crud import (
     create_session_if_new,
     create_user,
+    delete_session,
     get_user_by_id,
     get_user_by_username,
     list_sessions,
@@ -27,6 +28,21 @@ async def test_list_sessions_orders_newest_first():
 
     ids = [s["id"] for s in await list_sessions()]
     assert ids.index(newer_id) < ids.index(older_id)
+
+
+async def test_delete_session_removes_it():
+    session_id = str(uuid.uuid4())
+    await create_session_if_new(session_id, "to be deleted")
+
+    await delete_session(session_id)
+
+    ids = [s["id"] for s in await list_sessions()]
+    assert session_id not in ids
+
+
+async def test_delete_session_nonexistent_is_a_noop():
+    # DELETE 应该是幂等的——删一个根本不存在的 id 不该报错
+    await delete_session(str(uuid.uuid4()))
 
 
 async def test_create_and_get_user_by_username():

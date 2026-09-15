@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.engine import async_session_factory
@@ -21,6 +21,12 @@ async def list_sessions() -> list[dict]:
         result = await session.execute(select(SessionRow).order_by(SessionRow.created_at.desc()))
         rows = result.scalars().all()
         return [{"id": row.id, "title": row.title} for row in rows]
+
+
+async def delete_session(session_id: str) -> None:
+    async with async_session_factory() as session:
+        await session.execute(delete(SessionRow).where(SessionRow.id == session_id))
+        await session.commit()
 
 
 async def create_user(username: str, password_hash: str) -> UserRow:
