@@ -91,7 +91,7 @@ def test_format_executor_event_with_steps():
     result = svc._format_executor_event({
         "past_steps": [("step1", "ok"), ("step2", "ok")],
         "plan": ["step3"],
-    })
+    }, 2)
 
     assert result["type"] == "step_complete"
     assert result["current_step"] == "step2"  # 最后一步
@@ -100,7 +100,7 @@ def test_format_executor_event_with_steps():
 
 def test_format_executor_event_empty_past_steps():
     svc = AIOpsService()
-    result = svc._format_executor_event({"past_steps": [], "plan": ["step1"]})
+    result = svc._format_executor_event({"past_steps": [], "plan": ["step1"]}, 1)
 
     assert result["type"] == "status"
 
